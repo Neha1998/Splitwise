@@ -1,0 +1,101 @@
+import uuid
+
+EXPENSE = ["EQUAL", "EXACT", "PERCENT"]
+
+
+class User(object):
+    def __init__(self, name, email, mob):
+        self.name = name
+        self.email = email
+        self.mob = mob
+        self.id = uuid.uuid4()
+        self.owes = {}
+
+    def owe(self, user, amount):
+        if user in self.owes:
+            self.owes[user] += amount
+        else:
+            self.owes[user] = amount
+
+    def show_balance(self):
+        if not self.owes:
+            print(f"No balances for {self.name}")
+            return
+
+        for user in self.owes:
+            if user != self:
+                if self in user.owes:
+                    if user.owes[self] > self.owes[user]:
+                        user.owes[self] -= self.owes[user]
+                        self.owes.pop(user)
+                    else:
+                        self.owes[user] -= user.owes[self]
+                        user.owes.pop(self)
+
+        for user in self.owes:
+            if user != self:
+                print(f"{self.name} owes {user.name}: {self.owes[user]}")
+
+
+class Split(object):
+
+    def __init__(self, user):
+        self.user = user
+
+    def add(self, amount, users, expense, exact=None, percent=None):
+        if expense not in EXPENSE:
+            return
+        if expense == "EQUAL":
+            owing_amount = amount / len(users)
+            for user in users:
+                user.owe(self.user, owing_amount)
+        elif expense == "EXACT":
+            if not exact or sum(exact) != amount:
+                return
+            for index, user in enumerate(users):
+                user.owe(self.user, exact[index])
+        elif expense == "PERCENT":
+            if not percent or sum(percent) != 100:
+                return
+            for index, user in enumerate(users):
+                user.owe(self.user, percent[index] / 100 * amount)
+
+        return
+
+
+class Splitwise(object):
+
+    def __init__(self, users):
+        self.users = users
+
+    def show_all_balance(self):
+        for user in self.users:
+            user.show_balance()
+
+
+if __name__ == "__main__":
+    u1 = User("A", "A.com", "A123")
+    u2 = User("B", "B.com", "B123")
+    u3 = User("C", "C.com", "C123")
+    u4 = User("D", "D.com", "D123")
+    splitwise = Splitwise([u1, u2, u3, u4])
+
+    splitwise.show_all_balance()
+    print("**")
+    u1.show_balance()
+    print("**")
+    split_u1 = Split(u1)
+    split_u1.add(1000, [u1, u2, u3, u4], "EQUAL")
+    u4.show_balance()
+    print("**")
+    u1.show_balance()
+    print("**")
+    split_u1.add(1250, [u2, u3], "EXACT", exact=[370, 880])
+    splitwise.show_all_balance()
+    print("**")
+    split_u4 = Split(u4)
+    split_u4.add(1200, [u1, u2, u3, u4], "PERCENT", percent=[40, 20, 20, 20])
+    u1.show_balance()
+    print("**")
+    splitwise.show_all_balance()
+    print("**")
